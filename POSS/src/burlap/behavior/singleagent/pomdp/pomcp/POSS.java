@@ -46,6 +46,7 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 	private int NUM_SIMS = NUM_PARTICLES;
 	private int BRANCHING = 8;
 
+	
 	private boolean randomPlannerSet = false;
 	private List<Action> actionList; 
 
@@ -127,7 +128,8 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 
 		if(Math.pow(this.gamma, depth) < this.EPSILON ) return 0;
 		if(_o!=null){
-			if(((PODomain)this.domain).getObservationFunction().isTerminalObservation(_o)) return 0;
+			if(this.tf.isTerminal(_o)) return 0;
+//			if(((PODomain)this.domain).getObservationFunction().isTerminalObservation(_o)) return 0;
 		}
 
 		if(node.isLeaf()) {
