@@ -51,8 +51,11 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 	private List<Action> actionList; 
 
 	private Random randomNumber = RandomFactory.getMapped(0);
+	
+	//observation Terminal Function
+	private TerminalFunction  otf;
 
-	public POSS(PODomain domainIn, RewardFunction rfIn, TerminalFunction tfIn, double discount, HashableStateFactory hashingFactory, double explorationBonus,  int branching){
+	public POSS(PODomain domainIn, RewardFunction rfIn, TerminalFunction tfIn, TerminalFunction otfIn, double discount, HashableStateFactory hashingFactory, double explorationBonus,  int branching){
 		super();
 		this.EXP_BONUS=explorationBonus;
 		this.BRANCHING = branching;
@@ -61,6 +64,7 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 		this.tf = tfIn;
 		this.gamma = discount;
 		this.hashingFactory = hashingFactory;
+		this.otf = otfIn;
 	}
 
 
@@ -128,7 +132,7 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 
 		if(Math.pow(this.gamma, depth) < this.EPSILON ) return 0;
 		if(_o!=null){
-			if(this.tf.isTerminal(_o)) return 0;
+			if(this.otf.isTerminal(_o)) return 0;
 //			if(((PODomain)this.domain).getObservationFunction().isTerminalObservation(_o)) return 0;
 		}
 
@@ -288,10 +292,10 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 		RewardFunction rf = new TigerDomain.TigerRF();
 		TerminalFunction tf = new NullTermination();
 		HashableStateFactory hsf = new SimpleHashableStateFactory();
-		
+		TerminalFunction otf = new NullTermination();
 		WeightedParticleBeliefState wpbs = new WeightedParticleBeliefState(initialBelief, 512, domain, hsf);
 		
-		POSS bss = new POSS(domain, rf, tf, 0.75, hsf, 10000,1);
+		POSS bss = new POSS(domain, rf, tf, otf, 0.75, hsf, 10000,1);
 		Policy p = bss.planFromState(wpbs);
 
 		SimulatedPOEnvironment env = new SimulatedPOEnvironment(domain, rf, tf);
