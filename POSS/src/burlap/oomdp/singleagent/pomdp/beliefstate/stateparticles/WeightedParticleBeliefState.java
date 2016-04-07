@@ -175,6 +175,10 @@ public class WeightedParticleBeliefState implements BeliefState, EnumerableBelie
 	public List<State> getParticles() {
 		return this.stateParticles;
 	}
+	
+	public List<Double> getParticleWeights() {
+		return this.particleWeights;
+	}
 
 	public void setParticles(List<State> particlesList) {
 		if(particlesList.size()!=this.maxNumberOfParticles){

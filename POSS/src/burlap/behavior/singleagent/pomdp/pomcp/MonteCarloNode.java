@@ -241,7 +241,7 @@ public class MonteCarloNode {
 		return children;
 	}
 
-	public List<QValue> returnQVlaueForNode(State s){
+	public List<QValue> returnQVlauesForNode(State s){
 		List<QValue> returnQValueList = new ArrayList<QValue>();
 		for(HistoryElement h : this.children.keySet()){
 			GroundedAction a = h.getAction();
@@ -273,7 +273,7 @@ public class MonteCarloNode {
 		}
 		return new QValue(s, a, 0.);
 	}
-	public void clearBeliefCollection() {
+	public void clearBeliefState() {
 		this.prune();
 		this.children.clear();
 		this.belief.clearParticles();

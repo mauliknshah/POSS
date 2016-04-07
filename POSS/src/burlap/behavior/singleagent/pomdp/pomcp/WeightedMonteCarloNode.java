@@ -12,7 +12,6 @@ import burlap.oomdp.core.AbstractGroundedAction;
 import burlap.oomdp.core.states.State;
 import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.singleagent.pomdp.PODomain;
-import burlap.oomdp.singleagent.pomdp.beliefstate.stateparticles.ParticleBeliefState;
 import burlap.oomdp.singleagent.pomdp.beliefstate.stateparticles.WeightedParticleBeliefState;
 import burlap.oomdp.statehashing.HashableStateFactory;
 
@@ -147,6 +146,28 @@ public class WeightedMonteCarloNode {
 			if(childVisitCount > 0){
 
 				test = child.getValue() + C * Math.sqrt(Math.log(this.getVisits()+1)/childVisitCount);
+			}
+
+
+			if(test > maxValue) {
+				maxValue = test;
+				bestAction = h.getAction();
+			}
+		}
+		return bestAction;
+	}
+	
+	public synchronized GroundedAction bestExploringAction(double C, int depth) {
+		double maxValue = Double.NEGATIVE_INFINITY;
+		GroundedAction bestAction = null;
+
+		for(HistoryElement h : children.keySet()) {
+			WeightedMonteCarloNode child = children.get(h);
+			int childVisitCount = child.getVisits();
+			double test =Double.MAX_VALUE;
+			if(childVisitCount > 0){
+
+				test = child.getValue() + C/(depth*depth*depth) * Math.sqrt(Math.log(this.getVisits()+1)/childVisitCount);
 			}
 
 

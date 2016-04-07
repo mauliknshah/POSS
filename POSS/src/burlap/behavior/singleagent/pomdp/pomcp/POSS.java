@@ -13,6 +13,7 @@ import burlap.behavior.policy.GreedyQPolicy;
 import burlap.behavior.policy.Policy;
 import burlap.behavior.singleagent.EpisodeAnalysis;
 import burlap.behavior.singleagent.MDPSolver;
+import burlap.debugtools.DPrint;
 import burlap.debugtools.RandomFactory;
 import burlap.domain.singleagent.pomdp.tiger.TigerDomain;
 import burlap.oomdp.auxiliary.common.NullTermination;
@@ -37,6 +38,9 @@ import burlap.behavior.valuefunction.QValue;
 
 public class POSS extends MDPSolver implements Planner, QFunction{
 
+	
+	protected int debugCode = 927490;
+	
 	protected WeightedMonteCarloNode root = null;
 
 
@@ -45,6 +49,7 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 	private double EXP_BONUS = 5;
 	private int NUM_SIMS = NUM_PARTICLES;
 	private int BRANCHING = 8;
+	private int HEIGHT = 100;
 
 	
 	private boolean randomPlannerSet = false;
@@ -55,7 +60,19 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 	//observation Terminal Function
 	private TerminalFunction  otf;
 
-	public POSS(PODomain domainIn, RewardFunction rfIn, TerminalFunction tfIn, TerminalFunction otfIn, double discount, HashableStateFactory hashingFactory, double explorationBonus,  int branching){
+	/**
+	 * 
+	 * @param domainIn: input POMDP domain
+	 * @param rfIn: reward function for the POMDP
+	 * @param tfIn: Terminal Function for the MDP underneath
+	 * @param otfIn: Terminal Function for the terminal observation
+	 * @param discount: discount factor
+	 * @param hashingFactory: hashing factory for the states
+	 * @param explorationBonus: exploration constant C for the UCT to explore the tree underneath
+	 * @param treeHeight: height of the tree to plan over
+	 * @param branching: branching for the tree at the observation nodes.
+	 */
+	public POSS(PODomain domainIn, RewardFunction rfIn, TerminalFunction tfIn, TerminalFunction otfIn, double discount, HashableStateFactory hashingFactory, double explorationBonus, int treeHeight,  int branching){
 		super();
 		this.EXP_BONUS=explorationBonus;
 		this.BRANCHING = branching;
@@ -64,6 +81,7 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 		this.tf = tfIn;
 		this.gamma = discount;
 		this.hashingFactory = hashingFactory;
+		this.HEIGHT = treeHeight;
 		this.otf = otfIn;
 	}
 
@@ -78,6 +96,9 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 			return this.root.returnQVlauesForNode(initialBeliefState);
 		}
 		else{
+			String str = "planning randomly";
+			DPrint.cl(debugCode , str);
+			DPrint.toggleCode(debugCode, false);
 			List<GroundedAction> gaList = getGroundedActions(((WeightedParticleBeliefState)initialBeliefState).getRandomState());
 			List<QValue> qList = new ArrayList<QValue>();
 			for(GroundedAction ga: gaList){
@@ -100,6 +121,9 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 			return root.returnQVlaueForNode(initialBeliefState, a);
 		}
 		else{
+			String str = "planning randomly";
+			DPrint.cl(debugCode , str);
+			DPrint.toggleCode(debugCode, false);
 			return new QValue(initialBeliefState, a, 0.);
 		}
 
@@ -130,7 +154,9 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 
 	private double simulate(State state, WeightedMonteCarloNode node, int depth, State _o, GroundedAction _ga) {
 
-		if(Math.pow(this.gamma, depth) < this.EPSILON ) return 0;
+		if(Math.pow(this.gamma, depth) < this.EPSILON ) return 0.;
+		if(depth>this.HEIGHT) return 0.;
+		if(this.tf.isTerminal(state)) return 0.;
 		if(_o!=null){
 			if(this.otf.isTerminal(_o)) return 0;
 //			if(((PODomain)this.domain).getObservationFunction().isTerminalObservation(_o)) return 0;
@@ -196,6 +222,7 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 	private double rollout(State state, int depth) {
 		if(Math.pow(this.gamma, depth) < this.EPSILON || this.tf.isTerminal(state)) {
 			return 0;}
+		if(depth>this.HEIGHT) return 0.;
 
 		GroundedAction a = getGroundedActions(state).get(RandomFactory.getMapped(0).nextInt(getGroundedActions(state).size()));
 		State sPrime = (State) a.executeIn(state);
@@ -254,7 +281,9 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 			planFromWeightedBeliefState((WeightedParticleBeliefState) initialBeliefState);
 			return root.value;
 		}
-
+		String str = "planning randomly";
+		DPrint.cl(debugCode , str);
+		DPrint.toggleCode(debugCode, false);
 		return 0.;
 
 
@@ -294,8 +323,9 @@ public class POSS extends MDPSolver implements Planner, QFunction{
 		HashableStateFactory hsf = new SimpleHashableStateFactory();
 		TerminalFunction otf = new NullTermination();
 		WeightedParticleBeliefState wpbs = new WeightedParticleBeliefState(initialBelief, 512, domain, hsf);
+		int treeHeight = 4;
 		
-		POSS bss = new POSS(domain, rf, tf, otf, 0.75, hsf, 10000,1);
+		POSS bss = new POSS(domain, rf, tf, otf, 0.75, hsf, 10000, treeHeight,1);
 		Policy p = bss.planFromState(wpbs);
 
 		SimulatedPOEnvironment env = new SimulatedPOEnvironment(domain, rf, tf);

@@ -10,7 +10,7 @@ import java.util.Random;
 import java.util.Set;
 
 import burlap.behavior.singleagent.auxiliary.StateEnumerator;
-
+import burlap.debugtools.DPrint;
 import burlap.debugtools.RandomFactory;
 import burlap.oomdp.core.Attribute;
 import burlap.oomdp.core.ObjectClass;
@@ -20,6 +20,7 @@ import burlap.oomdp.core.states.MutableState;
 import burlap.oomdp.core.states.State;
 import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.singleagent.SADomain;
+import burlap.oomdp.singleagent.pomdp.ObservationFunction;
 import burlap.oomdp.singleagent.pomdp.PODomain;
 import burlap.oomdp.singleagent.pomdp.beliefstate.BeliefState;
 import burlap.oomdp.singleagent.pomdp.beliefstate.EnumerableBeliefState;
@@ -32,6 +33,7 @@ public class ParticleBeliefState implements BeliefState, EnumerableBeliefState{
 
 	protected List<State> stateParticles = new ArrayList<State>();
 	protected int maxNumberOfParticles = 16;
+	protected int debugInt = 4325768;
 
 	protected Random rand = RandomFactory.getMapped(1);
 
@@ -105,7 +107,7 @@ public class ParticleBeliefState implements BeliefState, EnumerableBeliefState{
 			stateParticles.add(s);
 		}
 		else{
-			throw new ArrayIndexOutOfBoundsException("Belief already has maximum number of particles allowed.");
+			throw new ArrayIndexOutOfBoundsException("Belief already has maximum number of particles allowed: " + stateParticles.size());
 		}
 	}
 
@@ -314,31 +316,51 @@ public class ParticleBeliefState implements BeliefState, EnumerableBeliefState{
 	public BeliefState getUpdatedBeliefState(State obs, GroundedAction ga) {
 		//TODO: set flag for failed update
 		if(rejectionSamplingFailed){
-			ParticleBeliefState updatedBelief = new ParticleBeliefState(this.domain,this.stateEnumerator,this.hsf,this.maxNumberOfParticles);
+//			ParticleBeliefState updatedBelief = new ParticleBeliefState(this.domain,this.stateEnumerator,this.hsf,this.maxNumberOfParticles);
+			ParticleBeliefState updatedBelief = new ParticleBeliefState(this);
 			updatedBelief.setRejectionSamplingFlag(rejectionSamplingFailed);
 			return updatedBelief;
 		}
 		
 		boolean observationPresentInTree = false;
-		for(State obsTest : domain.getObservationFunction().getAllPossibleObservations()){
+		double totalProb = 0.;
+		ObservationFunction of = domain.getObservationFunction(); 
+		for(State obsTest : of.getAllPossibleObservations()){
 			if(compareObservations(obsTest, obs)){
 				observationPresentInTree = true;
 				break;
 			}
+			
 		}
+		
+		for(State s :this.stateParticles){
+			totalProb += of.getObservationProbability(obs, s, ga);
+		}
+		
+		if(totalProb==0.){
+			observationPresentInTree  = false;
+			DPrint.cl(debugInt, "-----------------------lost------------------------------");
+		}
+		
+		
+		
 
 		//test something -> failed update and return an empty particle belief state
 
 		ParticleBeliefState updatedBelief = new ParticleBeliefState(this.domain,this.stateEnumerator,this.hsf,this.maxNumberOfParticles);
-		updatedBelief.setRejectionSamplingFlag(observationPresentInTree);
+		updatedBelief.setRejectionSamplingFlag(!observationPresentInTree);
 
-		if(!observationPresentInTree){
+		if(observationPresentInTree){
 			while(updatedBelief.stateParticles.size()<updatedBelief.maxNumberOfParticles){
 				State s = this.sampleParticles();
 				State s_ = ga.executeIn(s);
 				State o_ = ((PODomain)domain).getObservationFunction().sampleObservation(s_, ga);
 				if(compareObservations(obs, o_)) updatedBelief.addParticle(s_);
 			}
+		}
+		else{
+			updatedBelief = new ParticleBeliefState(this);
+			updatedBelief.setRejectionSamplingFlag(true);
 		}
 		return updatedBelief;
 	}
@@ -413,6 +435,9 @@ public class ParticleBeliefState implements BeliefState, EnumerableBeliefState{
 	}
 
 
+	public State getRandomState(){
+		return stateParticles.get(rand.nextInt(maxNumberOfParticles));
+	}
 
 
 
@@ -431,6 +456,9 @@ public class ParticleBeliefState implements BeliefState, EnumerableBeliefState{
 	}
 
 
+	public boolean getRejectionSamplingStatus(){
+		return rejectionSamplingFailed;
+	}
 
 
 }
